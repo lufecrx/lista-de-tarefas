@@ -1,0 +1,290 @@
+<c-row class="g-3">
+  <c-col cLabel [sm]="12" [md]="6" [lg]="3">
+    <label cLabel for="tarefaFilter">Filtrar por tarefa:</label>
+    <input class="form-control" type="text" id="tarefaFilter" [(ngModel)]="tarefaFilter" (input)="applyFilters()">
+  </c-col>
+  <c-col [sm]="12" [md]="6" [lg]="3">
+    <label cLabel for="dataLimiteFilter">Filtrar por data limite:</label>
+    <input class="form-control" type="date" id="dataLimiteFilter" [(ngModel)]="dataLimiteFilter"
+      (input)="applyFilters()">
+  </c-col>
+  <c-col cLabel [sm]="12" [md]="6" [lg]="3">
+    <label cLabel for="custoMinFilter">Filtrar por custo mínimo:</label>
+    <input class="form-control" type="number" id="custoMinFilter" [(ngModel)]="custoMinFilter" (input)="applyFilters()">
+  </c-col>
+  <c-col cLabel [sm]="12" [md]="6" [lg]="3">
+    <label cLabel for="custoMaxFilter">Filtrar por custo máximo:</label>
+    <input class="form-control" type="number" id="custoMaxFilter" [(ngModel)]="custoMaxFilter" (input)="applyFilters()">
+  </c-col>
+</c-row>
+
+<c-row class="mt-4">
+  <c-col xs>
+    <c-card class="mb-4">
+      <c-card-header>
+        Painel de Tarefas
+        <button cButton color="primary" class="float-end" size="sm" (click)="addTarefa()">Adicionar
+          Tarefa</button>
+      </c-card-header>
+      <c-card-body>
+
+        <table [hover]="true" [responsive]="true" [striped]="true" align="middle" cTable class="mb-0 border">
+
+          <thead cTableColor="light">
+            <tr>
+              <th class="text-center">Data Limite</th>
+              <th class="text-center">Tarefa</th>
+              <th class="text-center">Custo</th>
+              <th class="text-center">Editar/Excluir</th>
+              <th class="text-center">Mover</th>
+            </tr>
+          </thead>
+
+          <tbody *ngIf="loading">
+            <tr>
+              <td colspan="6" class="text-center">
+                <div class="m-2">
+                  <c-spinner label="Loading..."></c-spinner>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+
+          <!-- No activities found -->
+          <tbody *ngIf="!loading && tarefasFiltradas.length == 0">
+            <tr>
+              <td></td>
+              <td></td>
+              <td class="text-center">
+                <div class="m-2">
+                  <svg cIcon name="cilSad"></svg>
+                  <span class="text-medium-emphasis">
+                    Nada para ver aqui. Adicione uma nova tarefa.
+                  </span>
+                </div>
+              </td>
+              <td></td>
+              <td></td>
+            </tr>
+          </tbody>
+
+          <tbody class="table-list" cdkDropList *ngIf="!loading" (cdkDropListDropped)="drop($event)">
+
+            <tr class="element-box" cdkDrag *ngFor="let tarefa of tarefasFiltradas; let i = index" [ngClass]="getTarefaClasse(tarefa)">
+
+              <td class="text-center">{{ tarefa.dataLimite | formatDate }}</td>
+
+              <td class="text-center">{{ tarefa.tarefa }}</td>
+
+              <td class="text-center">{{ tarefa.custo | currency:'BRL':'symbol':'1.2-2' }}</td>
+
+              <td class="text-center">
+                <button cButton color="secondary" size="sm" (click)="editarTarefa(tarefa)">
+                  <svg cIcon name="cil-pencil"></svg>
+                </button>
+                <button cButton color="primary" size="sm" (click)="deletarTarefa(tarefa)">
+                  <svg cIcon name="cil-trash"></svg>
+                </button>
+              </td>
+              <td class="text-center">
+                <button cButton color="secondary" size="sm" (click)="moveUp(i)" [disabled]="i === 0">
+                  <svg cIcon name="cil-arrow-top"></svg>
+                </button>
+                <button cButton color="secondary" size="sm" (click)="moveDown(i)" [disabled]="i === tarefasFiltradas.length - 1">
+                  <svg cIcon name="cil-arrow-bottom"></svg>
+                </button>
+              </td>
+
+            </tr>
+          </tbody>
+        </table>
+      </c-card-body>
+    </c-card>
+  </c-col>
+</c-row>
+
+<c-modal [visible]="addTarefaModal" (visibleChange)="handleAddMode($event)">
+  <c-modal-header>
+    <h5 class="modal-title">Adicionar Tarefa</h5>
+    <button (click)="toggleAddTarefa()" cButtonClose></button>
+  </c-modal-header>
+  <c-modal-body>
+    <form [formGroup]="formAddTarefa">
+
+      <c-row class="mb-1">
+        <label [sm]="4" cCol cLabel="col" for="tarefa">Tarefa</label>
+        <c-col *ngIf="formAddTarefa.controls['tarefa']  as ctrl" [sm]="8">
+          <input [valid]="
+               ctrl.touched && ctrl.valid
+                ? true
+                : (isTarefaEnviada || ctrl.touched) && ctrl.invalid
+                ? false
+                : undefined
+            " autocomplete="off" cFormControl formControlName="tarefa" id="tarefa" placeholder="Tarefa" required
+            type="text" />
+          <c-form-feedback *ngIf="isTarefaEnviada || ctrl.invalid" [valid]="!(isTarefaEnviada || ctrl.invalid)">
+            <ng-container *ngIf="ctrl.errors as errors">
+              <div *ngIf="errors['required']">
+                {{ formErrors['tarefa'].required }}
+              </div>
+            </ng-container>
+          </c-form-feedback>
+        </c-col>
+      </c-row>
+
+      <c-row class="mb-1">
+        <label [sm]="4" cCol cLabel="col" for="dataLimite">Data Limite</label>
+        <c-col *ngIf="formAddTarefa.controls['dataLimite'] as ctrl" [sm]="8">
+          <input [valid]="
+                ctrl.touched && ctrl.valid
+                  ? true
+                  : (isTarefaEnviada || ctrl.touched) && ctrl.invalid
+                  ? false
+                  : undefined
+              " autocomplete="off" cFormControl formControlName="dataLimite" id="dataLimite" placeholder="Data Limite" required
+            type="date" />
+          <c-form-feedback *ngIf="isTarefaEnviada || ctrl.invalid" [valid]="!(isTarefaEnviada || ctrl.invalid)">
+            <ng-container *ngIf="ctrl.errors as errors">
+              <div *ngIf="errors['required']">
+                {{ formErrors['date'].required }}
+              </div>
+              <div *ngIf="errors['pattern']">
+                {{ formErrors['date'].pattern }}
+              </div>
+            </ng-container>
+          </c-form-feedback>
+        </c-col>
+      </c-row>
+
+      <c-row class="mb-1">
+        <label [sm]="4" cCol cLabel="col" for="custo">Custo (R$)</label>
+        <c-col *ngIf="formAddTarefa.controls['custo']  as ctrl" [sm]="8">
+          <input [valid]="
+               ctrl.touched && ctrl.valid
+                ? true
+                : (isTarefaEnviada || ctrl.touched) && ctrl.invalid
+                ? false
+                : undefined
+            " autocomplete="off" cFormControl formControlName="custo" id="custo" placeholder="Custo (R$)" required
+            type="number" />
+          <c-form-feedback *ngIf="isTarefaEnviada || ctrl.invalid" [valid]="!(isTarefaEnviada || ctrl.invalid)">
+            <ng-container *ngIf="ctrl.errors as errors">
+              <div *ngIf="errors['required']">
+                {{ formErrors['currency'].required }}
+              </div>
+              <div *ngIf="errors['pattern']">
+                {{ formErrors['currency'].pattern }}
+              </div>
+            </ng-container>
+          </c-form-feedback>
+        </c-col>
+      </c-row>
+
+    </form>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cancelAddTarefa()">Cancel</button>
+    <button cButton color="primary" (click)="confirmAdd()">Save</button>
+  </c-modal-footer>
+</c-modal>
+
+<c-modal [visible]="editarTarefaModal" (visibleChange)="handleEditMode($event)">
+  <c-modal-header>
+    <h5 class="modal-title">Editar Tarefa</h5>
+    <button (click)="toggleEditarTarefa()" cButtonClose></button>
+  </c-modal-header>
+  <c-modal-body>
+
+    <form [formGroup]="formEditarTarefa">
+     
+      <c-row class="mb-1">
+        <label [sm]="4" cCol cLabel="col" for="tarefa">Tarefa</label>
+        <c-col *ngIf="formEditarTarefa.controls['tarefa']  as ctrl" [sm]="8">
+          <input [valid]="
+               ctrl.touched && ctrl.valid
+                ? true
+                : (isTarefaEditada || ctrl.touched) && ctrl.invalid
+                ? false
+                : undefined
+            " autocomplete="off" cFormControl formControlName="tarefa" id="tarefa" placeholder="Tarefa" required
+            type="text" />
+          <c-form-feedback *ngIf="isTarefaEditada || ctrl.invalid" [valid]="!(isTarefaEditada || ctrl.invalid)">
+            <ng-container *ngIf="ctrl.errors as errors">
+              <div *ngIf="errors['required']">
+                {{ formErrors['tarefa'].required }}
+              </div>
+            </ng-container>
+          </c-form-feedback>
+        </c-col>
+      </c-row>
+
+      <c-row class="mb-1">
+        <label [sm]="4" cCol cLabel="col" for="dataLimite">Data Limite</label>
+        <c-col *ngIf="formEditarTarefa.controls['dataLimite'] as ctrl" [sm]="8">
+          <input [valid]="
+                ctrl.touched && ctrl.valid
+                  ? true
+                  : (isTarefaEditada || ctrl.touched) && ctrl.invalid
+                  ? false
+                  : undefined
+              " autocomplete="off" cFormControl formControlName="dataLimite" id="dataLimite" placeholder="Data Limite" required
+            type="date" />
+          <c-form-feedback *ngIf="isTarefaEditada || ctrl.invalid" [valid]="!(isTarefaEditada || ctrl.invalid)">
+            <ng-container *ngIf="ctrl.errors as errors">
+              <div *ngIf="errors['required']">
+                {{ formErrors['date'].required }}
+              </div>
+              <div *ngIf="errors['pattern']">
+                {{ formErrors['date'].pattern }}
+              </div>
+            </ng-container>
+          </c-form-feedback>
+        </c-col>
+      </c-row>
+
+      <c-row class="mb-1">
+        <label [sm]="4" cCol cLabel="col" for="custo">Custo (R$)</label>
+        <c-col *ngIf="formEditarTarefa.controls['custo']  as ctrl" [sm]="8">
+          <input [valid]="
+               ctrl.touched && ctrl.valid
+                ? true
+                : (isTarefaEditada || ctrl.touched) && ctrl.invalid
+                ? false
+                : undefined
+            " autocomplete="off" cFormControl formControlName="custo" id="custo" placeholder="Custo (R$)" required
+            type="number" />
+          <c-form-feedback *ngIf="isTarefaEditada || ctrl.invalid" [valid]="!(isTarefaEditada || ctrl.invalid)">
+            <ng-container *ngIf="ctrl.errors as errors">
+              <div *ngIf="errors['required']">
+                {{ formErrors['currency'].required }}
+              </div>
+              <div *ngIf="errors['pattern']">
+                {{ formErrors['currency'].pattern }}
+              </div>
+            </ng-container>
+          </c-form-feedback>
+        </c-col>
+      </c-row>
+
+    </form>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cancelarEdicao()">Cancel</button>
+    <button cButton color="primary" (click)="confirmEdit()">Edit</button>
+  </c-modal-footer>
+</c-modal>
+
+<c-modal [visible]="deletarTarefaModal" (visibleChange)="handleDeleteMode($event)">
+  <c-modal-header>
+    <h5 class="modal-title">Deletar Tarefa</h5>
+    <button (click)="toggleDeletarTarefa()" cButtonClose></button>
+  </c-modal-header>
+  <c-modal-body>
+    <p>Tem certeza que deseja deletar a tarefa?</p>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cancelarExclusao()">Cancelar</button>
+    <button cButton color="primary" (click)="confirmDelete()">Deletar</button>
+  </c-modal-footer>
+</c-modal>
